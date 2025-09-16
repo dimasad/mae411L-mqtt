@@ -7,6 +7,7 @@ class Dashboard {
     constructor() {
         this.mqttClient = new MQTTClient();
         this.gaugeManager = null;
+        this.debugPane = null;
         this.isConnecting = false;
         
         this.initializeElements();
@@ -14,6 +15,7 @@ class Dashboard {
         this.setupMQTTCallbacks();
         this.loadConfiguration();
         this.initializeGauges();
+        this.initializeDebugPane();
     }
     
     initializeElements() {
@@ -32,6 +34,8 @@ class Dashboard {
         // Configuration inputs
         this.mqttHost = document.getElementById('mqtt-host');
         this.mqttPort = document.getElementById('mqtt-port');
+        this.mqttPath = document.getElementById('mqtt-path');
+        this.mqttSecure = document.getElementById('mqtt-secure');
         this.mqttUsername = document.getElementById('mqtt-username');
         this.mqttPassword = document.getElementById('mqtt-password');
         this.topicPrefix = document.getElementById('topic-prefix');
@@ -80,6 +84,11 @@ class Dashboard {
             this.handleGaugeRemoved(event.detail.topic);
         });
         
+        // Listen for debug pane publish message events
+        document.addEventListener('debugPublishMessage', (event) => {
+            this.handleDebugPublish(event.detail);
+        });
+        
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
@@ -92,10 +101,29 @@ class Dashboard {
     setupMQTTCallbacks() {
         this.mqttClient.onConnectionChange = (connected) => {
             this.updateConnectionStatus(connected);
+            if (connected && this.debugPane) {
+                this.debugPane.logConnected(
+                    this.mqttClient.config.host,
+                    this.mqttClient.config.port,
+                    this.mqttClient.config.path,
+                    this.mqttClient.config.secure
+                );
+            } else if (!connected && this.debugPane) {
+                this.debugPane.logDisconnected();
+            }
+        };
+        
+        this.mqttClient.onConnectionAttempt = (host, port, path, secure) => {
+            if (this.debugPane) {
+                this.debugPane.logConnection(host, port, path, secure);
+            }
         };
         
         this.mqttClient.onMessage = (topic, message) => {
             this.handleMQTTMessage(topic, message);
+            if (this.debugPane) {
+                this.debugPane.logMessageReceived(topic, message);
+            }
         };
     }
     
@@ -118,7 +146,9 @@ class Dashboard {
     saveConfiguration() {
         const config = {
             host: this.mqttHost.value.trim() || 'broker.emqx.io',
-            port: parseInt(this.mqttPort.value) || 8083,
+            port: parseInt(this.mqttPort.value) || 8084,
+            path: this.mqttPath.value.trim() || '/',
+            secure: this.mqttSecure.checked,
             username: this.mqttUsername.value.trim(),
             password: this.mqttPassword.value.trim(),
             topicPrefix: this.topicPrefix.value.trim() || 'wvu-mae411L'
@@ -130,10 +160,19 @@ class Dashboard {
             return;
         }
         
+        // Ensure path starts with /
+        if (!config.path.startsWith('/')) {
+            config.path = '/' + config.path;
+        }
+        
         this.mqttClient.updateConfig(config);
         localStorage.setItem('mae411L-mqtt-config', JSON.stringify(config));
         this.updateBrokerUrlDisplay();
         this.hideConfigPanel();
+        
+        if (this.debugPane) {
+            this.debugPane.logInfo('Configuration updated', config);
+        }
         
         // Reconnect if currently connected
         if (this.mqttClient.isConnected) {
@@ -143,7 +182,9 @@ class Dashboard {
     
     updateConfigInputs(config) {
         this.mqttHost.value = config.host || 'broker.emqx.io';
-        this.mqttPort.value = config.port || 8083;
+        this.mqttPort.value = config.port || 8084;
+        this.mqttPath.value = config.path || '/';
+        this.mqttSecure.checked = config.secure !== undefined ? config.secure : true;
         this.mqttUsername.value = config.username || '';
         this.mqttPassword.value = config.password || '';
         this.topicPrefix.value = config.topicPrefix || 'wvu-mae411L';
@@ -310,6 +351,9 @@ class Dashboard {
         // Subscribe to MQTT topic if connected
         if (subscribe && this.mqttClient.isConnected) {
             this.mqttClient.subscribe(topic);
+            if (this.debugPane) {
+                this.debugPane.logSubscribed(topic);
+            }
         }
         
         this.saveGauges();
@@ -320,6 +364,9 @@ class Dashboard {
         // Unsubscribe from MQTT topic
         if (this.mqttClient.isConnected) {
             this.mqttClient.unsubscribe(topic);
+            if (this.debugPane) {
+                this.debugPane.logUnsubscribed(topic);
+            }
         }
         
         this.saveGauges();
@@ -332,6 +379,28 @@ class Dashboard {
         } else {
             console.warn(`Received non-numeric message on ${topic}:`, message);
         }
+    }
+    
+    handleDebugPublish(detail) {
+        const { topic, message } = detail;
+        
+        if (!this.mqttClient.isConnected) {
+            if (this.debugPane) {
+                this.debugPane.logError('Cannot publish: Not connected to MQTT broker');
+            }
+            return;
+        }
+        
+        const success = this.mqttClient.publish(topic, message);
+        if (success && this.debugPane) {
+            this.debugPane.logMessagePublished(topic, message);
+        }
+    }
+    
+    initializeDebugPane() {
+        // Initialize debug pane after DOM is ready
+        this.debugPane = new DebugPane();
+        this.debugPane.logInfo('Debug pane initialized');
     }
 }
 

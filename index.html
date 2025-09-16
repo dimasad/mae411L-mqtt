@@ -42,7 +42,7 @@
                     <span class="status-dot" id="status-dot"></span>
                     <span class="status-text" id="status-text">Disconnected</span>
                 </div>
-                <span class="broker-url" id="broker-url">broker.emqx.io:8083</span>
+                <span class="broker-url" id="broker-url">wss://broker.emqx.io:8084/</span>
             </div>
         </header>
 
@@ -56,7 +56,15 @@
                 </div>
                 <div class="config-row">
                     <label for="mqtt-port">Port:</label>
-                    <input type="number" id="mqtt-port" value="8083" placeholder="8083">
+                    <input type="number" id="mqtt-port" value="8084" placeholder="8084">
+                </div>
+                <div class="config-row">
+                    <label for="mqtt-path">WebSocket Path:</label>
+                    <input type="text" id="mqtt-path" value="/" placeholder="/">
+                </div>
+                <div class="config-row">
+                    <label for="mqtt-secure">Secure Connection (WSS):</label>
+                    <input type="checkbox" id="mqtt-secure" checked>
                 </div>
                 <div class="config-row">
                     <label for="mqtt-username">Username:</label>
@@ -110,7 +118,45 @@
         </div>
     </div>
 
+    <!-- Debug Pane -->
+    <div id="debug-pane" class="debug-pane minimized">
+        <div id="debug-header" class="debug-header">
+            <div class="debug-title">
+                <span class="debug-icon">🐛</span>
+                Debug Console
+            </div>
+            <div id="debug-latest-event" class="debug-latest-event">No events logged</div>
+            <div class="debug-controls">
+                <button id="debug-clear" class="debug-btn" title="Clear log">🗑️</button>
+                <button id="debug-toggle" class="debug-toggle" title="Expand debug pane">▲</button>
+            </div>
+        </div>
+        <div id="debug-content" class="debug-content">
+            <div class="debug-section">
+                <h4>Event Log</h4>
+                <div id="debug-events" class="debug-events"></div>
+            </div>
+            <div class="debug-section">
+                <h4>Publish Message</h4>
+                <div class="debug-publish">
+                    <div class="publish-row">
+                        <label for="publish-topic">Topic:</label>
+                        <input type="text" id="publish-topic" placeholder="e.g., wvu-mae411L/test" class="publish-input">
+                    </div>
+                    <div class="publish-row">
+                        <label for="publish-message">Message:</label>
+                        <textarea id="publish-message" placeholder="Enter message to publish..." class="publish-textarea"></textarea>
+                    </div>
+                    <div class="publish-row">
+                        <button id="publish-btn" class="publish-btn">Publish Message</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
+    <script src="js/debug-pane.js"></script>
     <script src="js/gauge.js"></script>
     <script src="js/mqtt-client.js"></script>
     <script src="js/dashboard.js"></script>
