@@ -9,7 +9,9 @@ class MQTTClient {
         this.isConnected = false;
         this.config = {
             host: 'broker.emqx.io',
-            port: 8083,
+            port: 8084,
+            path: '/',
+            secure: true,
             username: '',
             password: '',
             topicPrefix: 'wvu-mae411L'
@@ -19,6 +21,7 @@ class MQTTClient {
         
         // Connection status callbacks
         this.onConnectionChange = null;
+        this.onConnectionAttempt = null;
         this.onMessage = null;
     }
     
@@ -34,7 +37,8 @@ class MQTTClient {
         
         return new Promise((resolve, reject) => {
             try {
-                const brokerUrl = `ws://${this.config.host}:${this.config.port}/mqtt`;
+                const protocol = this.config.secure ? 'wss' : 'ws';
+                const brokerUrl = `${protocol}://${this.config.host}:${this.config.port}${this.config.path}`;
                 
                 const options = {
                     clientId: `mae411L_dashboard_${Math.random().toString(16).substr(2, 8)}`,
@@ -52,6 +56,12 @@ class MQTTClient {
                 }
                 
                 console.log('Connecting to MQTT broker:', brokerUrl);
+                
+                // Notify debug pane of connection attempt
+                if (this.onConnectionAttempt) {
+                    this.onConnectionAttempt(this.config.host, this.config.port, this.config.path, this.config.secure);
+                }
+                
                 this.client = mqtt.connect(brokerUrl, options);
                 
                 this.client.on('connect', () => {
@@ -201,7 +211,8 @@ class MQTTClient {
     }
     
     getBrokerUrl() {
-        return `${this.config.host}:${this.config.port}`;
+        const protocol = this.config.secure ? 'wss' : 'ws';
+        return `${protocol}://${this.config.host}:${this.config.port}${this.config.path}`;
     }
     
     getConfig() {
