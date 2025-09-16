@@ -5,28 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MAE 411L MQTT Dashboard</title>
     <link rel="stylesheet" href="css/style.css">
-    <!-- MQTT.js library - fallback to local if CDN fails -->
-    <script src="https://cdn.jsdelivr.net/npm/mqtt@5.3.4/dist/mqtt.min.js"></script>
+    <!-- MQTT.js library - try local first, then CDN -->
+    <script src="lib/mqtt.min.js"></script>
     <script>
-        // Fallback for when MQTT library is not available
+        // Fallback to CDN if local library fails to load
         if (typeof mqtt === 'undefined') {
-            console.warn('MQTT library not loaded from CDN. Creating fallback.');
-            window.mqtt = {
-                connect: function() {
-                    console.warn('MQTT fallback: connect() called but library not available');
-                    return {
-                        on: function(event, callback) {
-                            if (event === 'error') {
-                                setTimeout(() => callback(new Error('MQTT library not available')), 100);
-                            }
-                        },
-                        subscribe: function() {},
-                        unsubscribe: function() {},
-                        publish: function() {},
-                        end: function() {}
-                    };
-                }
+            console.warn('Local MQTT library not found. Trying CDN...');
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/mqtt@5.3.4/dist/mqtt.min.js';
+            script.onerror = function() {
+                console.error('Failed to load MQTT library from CDN. Creating minimal fallback.');
+                window.mqtt = {
+                    connect: function() {
+                        console.warn('MQTT fallback: connect() called but library not available');
+                        return {
+                            on: function(event, callback) {
+                                if (event === 'error') {
+                                    setTimeout(() => callback(new Error('MQTT library not available')), 100);
+                                }
+                            },
+                            subscribe: function() {},
+                            unsubscribe: function() {},
+                            publish: function() {},
+                            end: function() {}
+                        };
+                    }
+                };
             };
+            document.head.appendChild(script);
         }
     </script>
 </head>

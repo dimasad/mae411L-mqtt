@@ -1,0 +1,121 @@
+name: MQTT Dashboard CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      mosquitto:
+        image: eclipse-mosquitto:2.0
+        ports:
+          - 1883:1883
+          - 9001:9001
+        options: >-
+          --health-cmd "mosquitto_pub -t 'health/check' -m 'test' || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 3
+        volumes:
+          - ${{ github.workspace }}/tests/mosquitto-ci.conf:/mosquitto/config/mosquitto.conf
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Create Mosquitto config for CI
+      run: |
+        mkdir -p tests
+        cat > tests/mosquitto-ci.conf << EOF
+        # CI Mosquitto configuration
+        listener 1883
+        listener 9001
+        protocol websockets
+        allow_anonymous true
+        log_type warning
+        EOF
+
+    - name: Lint code
+      run: npm run lint
+      continue-on-error: true
+
+    - name: Run unit tests
+      run: npm test -- --selectProjects=unit
+
+    - name: Wait for MQTT broker
+      run: |
+        timeout 30s bash -c 'until nc -z localhost 1883; do sleep 1; done'
+        timeout 30s bash -c 'until nc -z localhost 9001; do sleep 1; done'
+
+    - name: Test MQTT connectivity
+      run: |
+        # Install mosquitto clients for testing
+        sudo apt-get update
+        sudo apt-get install -y mosquitto-clients
+        
+        # Test basic MQTT connectivity
+        timeout 10s mosquitto_pub -h localhost -t test/topic -m "CI Test"
+        echo "MQTT broker connectivity verified"
+
+    - name: Run integration tests
+      run: npm test -- --selectProjects=integration
+
+    - name: Start web server for E2E tests
+      run: |
+        npm start &
+        sleep 3
+        curl -f http://localhost:8080 || exit 1
+      env:
+        CI: true
+
+    - name: Test dashboard functionality
+      run: |
+        # Test that dashboard loads and MQTT library is available
+        response=$(curl -s http://localhost:8080)
+        if [[ $response == *"MAE 411L Temperature Dashboard"* ]]; then
+          echo "✓ Dashboard loads successfully"
+        else
+          echo "✗ Dashboard failed to load"
+          exit 1
+        fi
+        
+        # Test that local MQTT library is served
+        curl -f http://localhost:8080/lib/mqtt.min.js > /dev/null
+        echo "✓ Local MQTT library is accessible"
+
+    - name: Generate test coverage
+      run: npm run test:coverage
+      continue-on-error: true
+
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      if: success()
+      with:
+        file: ./coverage/lcov.info
+        fail_ci_if_error: false
+
+  deploy-preview:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy preview
+      run: |
+        echo "🚀 Preview deployment would go here"
+        echo "Dashboard URL: https://mae411l-mqtt-pr-${{ github.event.number }}.preview.example.com"
