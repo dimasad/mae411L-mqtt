@@ -17,6 +17,41 @@ A real-time MQTT dashboard for monitoring temperature readings from student proj
 2. Click "Connect" to connect to the default EMQX broker
 3. Temperature readings will automatically appear as they are published to topics following the pattern `wvu-mae411L/group_*`
 
+## Local Development & Testing
+
+For development and testing with a local MQTT broker:
+
+1. **Install and start Mosquitto with WebSocket support:**
+```bash
+# Ubuntu/Debian
+sudo apt-get install mosquitto mosquitto-clients
+
+# Create config with WebSocket support
+cat > mosquitto-local.conf << EOF
+listener 1883
+listener 9001
+protocol websockets
+allow_anonymous true
+EOF
+
+# Start broker
+mosquitto -c mosquitto-local.conf
+```
+
+2. **Configure dashboard for local broker:**
+   - Click the hamburger menu (☰) 
+   - Set Host: `localhost`, Port: `9001`
+   - Uncheck "Secure Connection (WSS)"
+   - Click "Save" and then "Connect"
+
+3. **Test with command line:**
+```bash
+# Publish temperature reading
+mosquitto_pub -h localhost -t wvu-mae411L/group_1 -m "25.5"
+```
+
+See [TESTING.md](TESTING.md) for comprehensive testing instructions.
+
 ## Default Configuration
 
 - **MQTT Broker**: broker.emqx.io (EMQX public broker)
