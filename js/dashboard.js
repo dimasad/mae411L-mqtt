@@ -101,13 +101,26 @@ class Dashboard {
     setupMQTTCallbacks() {
         this.mqttClient.onConnectionChange = (connected) => {
             this.updateConnectionStatus(connected);
-            if (connected && this.debugPane) {
-                this.debugPane.logConnected(
-                    this.mqttClient.config.host,
-                    this.mqttClient.config.port,
-                    this.mqttClient.config.path,
-                    this.mqttClient.config.secure
-                );
+            if (connected) {
+                // Subscribe to all existing gauge topics
+                if (this.gaugeManager) {
+                    const topics = this.gaugeManager.getAllTopics();
+                    topics.forEach(topic => {
+                        this.mqttClient.subscribe(topic);
+                        if (this.debugPane) {
+                            this.debugPane.logSubscribed(topic);
+                        }
+                    });
+                }
+                
+                if (this.debugPane) {
+                    this.debugPane.logConnected(
+                        this.mqttClient.config.host,
+                        this.mqttClient.config.port,
+                        this.mqttClient.config.path,
+                        this.mqttClient.config.secure
+                    );
+                }
             } else if (!connected && this.debugPane) {
                 this.debugPane.logDisconnected();
             }
@@ -183,7 +196,7 @@ class Dashboard {
     updateConfigInputs(config) {
         this.mqttHost.value = config.host || 'broker.emqx.io';
         this.mqttPort.value = config.port || 8084;
-        this.mqttPath.value = config.path || '/';
+        this.mqttPath.value = config.path || '/mqtt';
         this.mqttSecure.checked = config.secure !== undefined ? config.secure : true;
         this.mqttUsername.value = config.username || '';
         this.mqttPassword.value = config.password || '';
