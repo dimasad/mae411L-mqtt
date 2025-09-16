@@ -10,9 +10,9 @@ class MQTTClient {
         this.config = {
             host: 'broker.emqx.io',
             port: 8084,
-            path: '/',
+            path: '/mqtt',
             secure: true,
-            username: '',
+            username: this.generateDefaultUsername(),
             password: '',
             topicPrefix: 'wvu-mae411L'
         };
@@ -23,6 +23,16 @@ class MQTTClient {
         this.onConnectionChange = null;
         this.onConnectionAttempt = null;
         this.onMessage = null;
+    }
+    
+    generateDefaultUsername() {
+        // Generate random alphanumeric suffix (letters and numbers)
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        let suffix = '';
+        for (let i = 0; i < 8; i++) {
+            suffix += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return `dashboard_client_${suffix}`;
     }
     
     updateConfig(newConfig) {
