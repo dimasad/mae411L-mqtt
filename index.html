@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAE 411L MQTT Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- MQTT.js library - fallback to local if CDN fails -->
+    <script src="https://cdn.jsdelivr.net/npm/mqtt@5.3.4/dist/mqtt.min.js"></script>
+    <script>
+        // Fallback for when MQTT library is not available
+        if (typeof mqtt === 'undefined') {
+            console.warn('MQTT library not loaded from CDN. Creating fallback.');
+            window.mqtt = {
+                connect: function() {
+                    console.warn('MQTT fallback: connect() called but library not available');
+                    return {
+                        on: function(event, callback) {
+                            if (event === 'error') {
+                                setTimeout(() => callback(new Error('MQTT library not available')), 100);
+                            }
+                        },
+                        subscribe: function() {},
+                        unsubscribe: function() {},
+                        publish: function() {},
+                        end: function() {}
+                    };
+                }
+            };
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <header class="header">
+            <h1>MAE 411L Temperature Dashboard</h1>
+            <div class="connection-bar">
+                <button id="hamburger-menu" class="hamburger-btn" title="Settings">☰</button>
+                <button id="connect-btn" class="connect-btn">Connect</button>
+                <div class="status-indicator">
+                    <span class="status-dot" id="status-dot"></span>
+                    <span class="status-text" id="status-text">Disconnected</span>
+                </div>
+                <span class="broker-url" id="broker-url">broker.emqx.io:8083</span>
+            </div>
+        </header>
+
+        <!-- Configuration Panel (Hidden by default) -->
+        <div id="config-panel" class="config-panel hidden">
+            <div class="config-content">
+                <h3>MQTT Configuration</h3>
+                <div class="config-row">
+                    <label for="mqtt-host">Host:</label>
+                    <input type="text" id="mqtt-host" value="broker.emqx.io" placeholder="broker.emqx.io">
+                </div>
+                <div class="config-row">
+                    <label for="mqtt-port">Port:</label>
+                    <input type="number" id="mqtt-port" value="8083" placeholder="8083">
+                </div>
+                <div class="config-row">
+                    <label for="mqtt-username">Username:</label>
+                    <input type="text" id="mqtt-username" placeholder="Optional">
+                </div>
+                <div class="config-row">
+                    <label for="mqtt-password">Password:</label>
+                    <input type="password" id="mqtt-password" placeholder="Optional">
+                </div>
+                <div class="config-row">
+                    <label for="topic-prefix">Topic Prefix:</label>
+                    <input type="text" id="topic-prefix" value="wvu-mae411L" placeholder="wvu-mae411L">
+                </div>
+                <div class="config-actions">
+                    <button id="save-config" class="btn btn-primary">Save</button>
+                    <button id="cancel-config" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard -->
+        <main class="dashboard">
+            <!-- Controls -->
+            <div class="controls">
+                <button id="add-gauge-btn" class="btn btn-primary">+ Add Gauge</button>
+            </div>
+
+            <!-- Gauges Grid -->
+            <div id="gauges-grid" class="gauges-grid">
+                <!-- Initial gauge will be added here by JavaScript -->
+            </div>
+        </main>
+
+        <!-- Add Gauge Modal -->
+        <div id="add-gauge-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3>Add Temperature Gauge</h3>
+                <div class="form-row">
+                    <label for="gauge-group">Group Number:</label>
+                    <input type="number" id="gauge-group" placeholder="1" min="1" max="99">
+                </div>
+                <div class="form-row">
+                    <label for="gauge-topic">Custom Topic (optional):</label>
+                    <input type="text" id="gauge-topic" placeholder="wvu-mae411L/group_1">
+                </div>
+                <div class="form-actions">
+                    <button id="create-gauge" class="btn btn-primary">Create</button>
+                    <button id="cancel-gauge" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/gauge.js"></script>
+    <script src="js/mqtt-client.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
